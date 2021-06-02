@@ -8,4 +8,8 @@ In order for the user to use locally you need to create your own local database 
 
 OR
 
+Import the database sql into your database
+
+OR
+
 demo site at : https://hafiz-web-barcode-app.epizy.com/
