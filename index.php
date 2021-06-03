@@ -118,6 +118,9 @@ if (isset($_GET['id'])) {
                                 ?>
         </div>
 
+
+
+
         <div class="modal" id="livestream_scanner">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -133,8 +136,6 @@ if (isset($_GET['id'])) {
                     </div>
                     <div class="modal-footer">
                         <select id="videoSource" class="pull-left">
-                            <option value="enviroment" selected>Back</option>
-                            <option value="user">Front</option>
                         </select>
                         <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
                     </div>
@@ -151,7 +152,7 @@ if (isset($_GET['id'])) {
                     </div>
                     <div class="modal-body">
                         <form class="form-inline" action="barcodeScanner.php" method="POST" onsubmit="return subprod()">
-                        <input type="hidden" name="prodid" value="<?php echo $id; ?>">
+                            <input type="hidden" name="prodid" value="<?php echo $id; ?>">
                             <div class="form-group">
                                 <label for="productname">Product Name</label>
                                 <input type="text" class="form-control" name="productname" id="productname" placeholder="" required>
@@ -162,7 +163,7 @@ if (isset($_GET['id'])) {
                             </div>
                             <div class="form-group">
                                 <label for="price">Price</label>
-                                <input type="number" class="form-control" name="price" id="price" placeholder="" required min="0" value="0" step="0.1">
+                                <input type="number" class="form-control" name="price" id="price" placeholder="" required min="0" value="0" step="0.2">
                             </div>
                             <div class="form-group" style="margin-top: 1rem;">
                                 <button type="submit" id="submitproduct" class="btn btn-primary">Save</button>
@@ -188,9 +189,33 @@ if (isset($_GET['id'])) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <script src="https://a.kabachnik.info/assets/js/libs/quagga.min.js"></script>
+    <script>
+        let videoSource = document.querySelector("#videoSource");
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            console.log("enumerateDevices() not supported.");
+        }
+
+        // List cameras and microphones.
+
+        navigator.mediaDevices.enumerateDevices()
+            .then(function(devices) {
+                devices.forEach(function(device) {
+                    if (device.kind == "videoinput") {
+                        videoSource.innerHTML += `
+                        <option value="${device.deviceId}">${device.label}</option>
+                        `;
+                    };
+                });
+            })
+            .catch(function(err) {
+                console.log(err.name + ": " + err.message);
+            });
+    </script>
     <script type="text/javascript">
         var id;
         var _scannerIsRunning = false;
+        let videoSourceID;
         $(function() {
             // Create the QuaggaJS config object for the live stream
             var liveStreamConfig = {
@@ -207,7 +232,8 @@ if (isset($_GET['id'])) {
                             min: 1,
                             max: 100
                         },
-                        facingMode: document.querySelector("#videoSource").value // or "user" for the front camera
+                        facingMode: "environtment", // or "user" for the front camera
+                        deviceId: videoSourceID
                     }
                 },
                 locator: {
@@ -250,11 +276,42 @@ if (isset($_GET['id'])) {
                     _scannerIsRunning = true;
                 });
             });
-
             document.getElementById("videoSource").addEventListener("change", function() {
+                videoSourceID = document.querySelector("#videoSource").value;
                 if (_scannerIsRunning) {
                     Quagga.stop();
-                }
+                    liveStreamConfig = {
+                    inputStream: {
+                        type: "LiveStream",
+                        constraints: {
+                            width: {
+                                min: 640
+                            },
+                            height: {
+                                min: 480
+                            },
+                            aspectRatio: {
+                                min: 1,
+                                max: 100
+                            },
+                            facingMode: "environtment", // or "user" for the front camera
+                            deviceId: videoSourceID
+                        }
+                    },
+                    locator: {
+                        patchSize: "medium",
+                        halfSample: true
+                    },
+                    numOfWorkers: navigator.hardwareConcurrency ?
+                        navigator.hardwareConcurrency : 4,
+                    decoder: {
+                        readers: [{
+                            format: "ean_reader",
+                            config: {}
+                        }]
+                    },
+                    locate: true
+                };}
                 Quagga.init(liveStreamConfig, function(err) {
                     if (err) {
                         $("#livestream_scanner .modal-body .error").html(
@@ -309,6 +366,7 @@ if (isset($_GET['id'])) {
                             lineWidth: 2
                         });
                     }
+
                     if (result.codeResult && result.codeResult.code) {
                         Quagga.ImageDebug.drawPath(
                             result.line, {
@@ -323,6 +381,7 @@ if (isset($_GET['id'])) {
                     }
                 }
             });
+
             // Once a barcode had been read successfully, stop quagga and
             // close the modal after a second to let the user notice where
             // the barcode had actually been found.
@@ -344,12 +403,14 @@ if (isset($_GET['id'])) {
                     }, 1000);
                 }
             });
+
             // Stop quagga in any case, when the modal is closed
             $("#livestream_scanner").on("hide.bs.modal", function() {
                 if (Quagga) {
                     Quagga.stop();
                 }
             });
+
             // Call Quagga.decodeSingle() for every file selected in the
             // file input
             $("#livestream_scanner input:file").on("change", function(e) {
@@ -365,6 +426,7 @@ if (isset($_GET['id'])) {
                 }
             });
         });
+
     </script>
 </body>
 
