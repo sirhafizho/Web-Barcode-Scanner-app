@@ -12,4 +12,4 @@ Import the database sql into your database
 
 OR
 
-demo site at : https://hafiz-web-barcode-app.epizy.com/
+demo site at : https://hafiz-web-barcode-app.epizy.com/ or https://hafiz-barcode-scanner-app.herokuapp.com/
